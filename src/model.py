@@ -10,7 +10,7 @@ from nervaluate import Evaluator
 import numpy as np
 
 
-class TransformerModel(pl.LightningModule):
+class Model(pl.LightningModule):
     def __init__(self, model_name="dumitrescustefan/bert-base-romanian-cased-v1", tokenizer_name=None, lr=2e-05,
                  model_max_length=512, bio2tag_list=[], tag_list=[]):
         super().__init__()
@@ -23,8 +23,7 @@ class TransformerModel(pl.LightningModule):
         print("Loading AutoModel [{}] ...".format(model_name))
         self.model_name = model_name
         self.tokenizer = AutoTokenizer.from_pretrained(self.tokenizer_name, strip_tokens=False)
-        self.model = AutoModelForTokenClassification.from_pretrained(self.model_name, num_labels=len(bio2tag_list))
-        self.dropout = nn.Dropout(0.2)
+        self.model_token_classification = AutoModelForTokenClassification.from_pretrained(self.model_name, num_labels=len(bio2tag_list))
 
         self.lr = lr
         self.model_max_length = model_max_length
@@ -56,7 +55,7 @@ class TransformerModel(pl.LightningModule):
 
 
     def forward(self, input_ids, attention_mask, labels):
-        output = self.model(
+        output = self.model_token_classification(
             input_ids=input_ids,
             attention_mask=attention_mask,
             labels=labels,
@@ -178,39 +177,17 @@ class TransformerModel(pl.LightningModule):
 
     def configure_optimizers(self):
         return torch.optim.AdamW([p for p in self.parameters() if p.requires_grad], lr=self.lr, eps=1e-08)
-        """Prepare optimizer and schedule (linear warmup and decay)
-        model = self.model
-        no_decay = ["bias", "LayerNorm.weight"]
-        optimizer_grouped_parameters = [
-            {
-                "params": [p for n, p in model.named_parameters() if not any(nd in n for nd in no_decay)],
-                "weight_decay": self.hparams.weight_decay,
-            },
-            {
-                "params": [p for n, p in model.named_parameters() if any(nd in n for nd in no_decay)],
-                "weight_decay": 0.0,
-            },
-        ]
-        optimizer = AdamW(optimizer_grouped_parameters, lr=self.lr, eps=self.hparams.adam_epsilon)
 
-        scheduler = get_linear_schedule_with_warmup(
-            optimizer,
-            num_warmup_steps=self.hparams.warmup_steps,
-            num_training_steps=self.total_steps,
-        )
-        scheduler = {"scheduler": scheduler, "interval": "step", "frequency": 1}
-        return [optimizer], [scheduler]"""
-
-    def predict(self, input_string):
+    def predictold(self, input_string):
         self.eval()
         self.freeze()
         input_ids = self.tokenizer.encode(input_string, add_special_tokens=True)
         #print(input_ids)
 
-        # convert to tensors & run the model
+        # convert to tensors & run the model_token_classification
         prepared_input_ids = torch.LongTensor(input_ids).unsqueeze(dim=0).to(self.device) # because batch_size = 1
         with torch.no_grad():
-            output = self.model(input_ids=prepared_input_ids, return_dict=True)
+            output = self.model_token_classification(input_ids=prepared_input_ids, return_dict=True)
             logits = output["logits"]
 
         # extract results
@@ -219,6 +196,33 @@ class TransformerModel(pl.LightningModule):
         results = []
         for id, ind in zip(input_ids, indices):
             #print(f"\t[{self.tokenizer.decode(id)}] -> {self.bio2tag_list[ind]}")
+            results.append({
+                "token_id": id,
+                "token": self.tokenizer.decode(id),
+                "tag_id": ind,
+                "tag": self.bio2tag_list[ind]
+            })
+        return results
+
+    def predict(self, texts):
+        self.eval()
+        self.freeze()
+        input_ids = self.tokenizer.encode(input_string, add_special_tokens=True)
+        # print(input_ids)
+
+        # convert to tensors & run the model_token_classification
+        prepared_input_ids = torch.LongTensor(input_ids).unsqueeze(dim=0).to(self.device)  # because batch_size = 1
+        with torch.no_grad():
+            output = self.model_token_classification(input_ids=prepared_input_ids, return_dict=True)
+            logits = output["logits"]
+
+        # extract results
+        indices = torch.argmax(logits.detach().cpu(), dim=-1).squeeze(
+            dim=0).tolist()  # reduce to [batch_size, seq_len] as list
+
+        results = []
+        for id, ind in zip(input_ids, indices):
+            # print(f"\t[{self.tokenizer.decode(id)}] -> {self.bio2tag_list[ind]}")
             results.append({
                 "token_id": id,
                 "token": self.tokenizer.decode(id),
@@ -239,9 +243,9 @@ class TransformerModel(pl.LightningModule):
             "bio2tag_list": self.bio2tag_list,
             "tag_list": self.tag_list
         }
-        os.makedirs(folder + "/model", exist_ok=True)
+        os.makedirs(folder + "/model_token_classification", exist_ok=True)
         os.makedirs(folder + "/tokenizer", exist_ok=True)
-        self.model.save_pretrained(save_directory=folder+"/model")
+        self.model_token_classification.save_pretrained(save_directory=folder + "/model_token_classification")
         self.tokenizer.save_pretrained(save_directory=folder + "/tokenizer")
         torch.save(obj, folder+"/data.bin")
         print(f"Model saved in '{folder}'.")
@@ -250,14 +254,15 @@ class TransformerModel(pl.LightningModule):
         folder = "trained_model"
         obj = torch.load(folder+"/data.bin")
 
-        model = TransformerModel(
+        model = Model(
             model_name=folder+"/model",
             tokenizer_name=folder + "/tokenizer",
             model_max_length=obj["model_max_length"],
             bio2tag_list=obj["bio2tag_list"],
             tag_list=obj["tag_list"]
         )
-
+        print(obj["bio2tag_list"])
+        print(obj["tag_list"])
         model.eval()
         print("Model successfully loaded.")
         return model
@@ -372,7 +377,7 @@ def train_model(
         lr: float = 1e-5,
         model_max_length: int = 512
 ):
-    print(f"Training with transformer model / tokenizer: {automodel_name} / {tokenizer_name}")
+    print(f"Training with transformer model_token_classification / tokenizer: {automodel_name} / {tokenizer_name}")
     if train_file != "":
         print(f"\t with training file {train_file}")
     if validation_file != "":
@@ -394,11 +399,11 @@ def train_model(
 
     import random
     with open(train_file, "r", encoding="utf8") as f:
-        train_data = json.load(f)#[:1000]
+        train_data = json.load(f)[:200]
     with open(validation_file, "r", encoding="utf8") as f:
-        validation_data = json.load(f)#[:100]
+        validation_data = json.load(f)[:200]
     with open(test_file, "r", encoding="utf8") as f:
-        test_data = json.load(f)#[:1]
+        test_data = json.load(f)[:200]
     train_data += test_data
 
     # deduce bio2 tag mapping and simple tag list, required by nervaluate
@@ -433,7 +438,7 @@ def train_model(
     print("Valid dataset has {} instances.".format(len(val_dataset)))
     print("Test dataset has {} instances.\n".format(len(test_dataset)))
 
-    model = TransformerModel(
+    model = Model(
         model_name=automodel_name,
         lr=lr,
         model_max_length=model_max_length,
@@ -451,7 +456,7 @@ def train_model(
 
     checkpoint_callback = ModelCheckpoint(
         monitor="valid/strict",
-        dirpath="model",
+        dirpath="model_token_classification",
         filename="NERModel",
         save_top_k=1,
         mode='max'
@@ -467,10 +472,10 @@ def train_model(
     )
     trainer.fit(model, train_dataloader, val_dataloader)
 
-    print("\nEvaluating model on the VALIDATION dataset:")
+    print("\nEvaluating model_token_classification on the VALIDATION dataset:")
     result_valid = trainer.test(model, val_dataloader)
-    #print("\nEvaluating model on the TEST dataset:")
-    #result_test = trainer.test(model, test_dataloader)
+    #print("\nEvaluating model_token_classification on the TEST dataset:")
+    #result_test = trainer.test(model_token_classification, test_dataloader)
 
     print("\nDone training.\n")
 
@@ -481,15 +486,15 @@ if __name__ == "__main__":
     from argparse import ArgumentParser
 
     parser = ArgumentParser() # todo redo defaults
-    parser.add_argument('--gpus', type=int, default=1)
+    parser.add_argument('--gpus', type=int, default=0)
     parser.add_argument('--batch_size', type=int, default=8)
     parser.add_argument('--accumulate_grad_batches', type=int, default=1)
     parser.add_argument('--model_name', type=str,
                         default="dumitrescustefan/bert-base-romanian-cased-v1")
     parser.add_argument('--tokenizer_name', type=str, default="")
     parser.add_argument("--dataset_name", type=str, default="")
-    parser.add_argument("--train_file", type=str, default="../data/train.json")
-    parser.add_argument("--validation_file", type=str, default="../data/valid.json")
+    parser.add_argument("--train_file", type=str, default="../data/test.json")
+    parser.add_argument("--validation_file", type=str, default="../data/test.json")
     parser.add_argument("--test_file", type=str, default="../data/test.json")
     parser.add_argument('--lr', type=float, default=3e-05)
     parser.add_argument('--model_max_length', type=int, default=512)
@@ -501,7 +506,7 @@ if __name__ == "__main__":
     if args.tokenizer_name == "":
         args.tokenizer_name = args.model_name
 
-    # train model, skip if already trained
+    # train model_token_classification, skip if already trained
     model = train_model(
         automodel_name=args.model_name,
         tokenizer_name=args.tokenizer_name,
@@ -517,7 +522,7 @@ if __name__ == "__main__":
 
     # this is how to run
     device = "cuda" # or "cpu"
-    model = TransformerModel.load()
+    model = Model.load()
     model.set_device(device)
 
     sentence = "Din 2017, când a început procesul de transformare a fabricii din Otopeni, până în prezent, Philip Morris International (PMI) a investit 500 de milioane de dolari pentru dezvoltarea capacităților de producție, formarea angajaților și implementarea unor soluții care vizează sustenabilitatea. Din această sumă, aproape 100 de milioane de dolari au fost investiți doar în 2021, iar în perioada 2022-2023, PMI va mai investi peste 100 de milioane de dolari."
