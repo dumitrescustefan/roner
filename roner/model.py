@@ -52,10 +52,10 @@ class NER():
         self.model.eval()
 
         try:
-            self.stanza = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
+            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
         except:
             stanza.download('ro')
-            self.stanza = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
+            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
 
     def __call__(self, texts:[]):
         """
@@ -72,7 +72,7 @@ class NER():
                 raise Exception(f"Input type not supported {type(texts)}. Please input a string or a list of strings.")
 
         # setup dataloader
-        dataset = NER.InferenceDataset(texts=texts, tokenizer=self.tokenizer, stanza=self.stanza, model_size=self.window_size, overlap_last=self.overlap_last, named_persons_only=self.named_persons_only)
+        dataset = NER.InferenceDataset(texts=texts, tokenizer=self.tokenizer, stanza=self.stanza_nlp, model_size=self.window_size, overlap_last=self.overlap_last, named_persons_only=self.named_persons_only)
         dataloader = torch.utils.data.DataLoader(dataset, num_workers=self.num_workers, batch_size=self.batch_size, collate_fn=NER.InferenceCollator(model_size=self.window_size, tokenizer=self.tokenizer, device=self.device))
 
         # run prediction
@@ -282,3 +282,25 @@ class NER():
                 "end": batch_end
             }
 
+
+"""
+if __name__ == "__main__":
+    texts = [
+        "Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. ",
+        "Miercuri, 13 Decembrie, în România.",
+        "George merge cu trenul Cluj - Timișoara de ora 6:20.", 
+        "Grecia are capitala la Atena.",
+        "România Spania și Italia!\n\n"
+    ]
+    
+    ner = NER(named_persons_only=True)
+    outputs = ner(texts)
+    for output in outputs:
+        print(f"Original text: {output['text']}")
+        for word in output['words']:
+            print(f"{word['text']:>20} = {word['tag']:<9}  {word}")
+
+    detokenized_texts = ner.detokenize(outputs)
+    for text in detokenized_texts:
+        print(f"[{text}]")
+"""

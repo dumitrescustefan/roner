@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="roner",
-    version="1.0.0",
+    version="1.0.4",
     author="Stefan Daniel Dumitrescu",
     author_email="dumitrescu.stefan@gmail.com",
     description="Named Entity Recognition for Romanian",
@@ -18,6 +18,9 @@ setuptools.setup(
     url="https://github.com/dumitrescustefan/roner",
     packages=setuptools.find_packages(),
     install_requires = parse_requirements('requirements.txt', session=False),
+    include_package_data=True,
+    data_files=[],
+    entry_points={},
     classifiers=(
         'Development Status :: 4 - Beta',
         "Programming Language :: Python :: 3.0",
