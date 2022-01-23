@@ -44,6 +44,8 @@ RoNER outputs a list of dictionary objects corresponding to the given input list
       "text": <<each word>>,
       "tag": <<entity label>>
       "pos": <<part of speech of this word>>,
+      "multi_word_entity": <<True if this word is linked to the previous one>>,
+      "span_after": <<span of text linking this word to the next>>,
       "start_char": <<start position of this word in the original text>>,
       "end_char": <<end position of this word in the original text>>,
       "token_ids": <<list of subtoken ids as given by the BERT tokenizer>>,
@@ -56,7 +58,10 @@ This information is sufficient to save word-to-subtoken alignment, to have acces
 
 To list entities, simply iterate over all the words in the dict, printing the word itself ``word['text']`` and its label ``word['tag']``.
 
-## Considerations
+## RoNER properties and considerations
+
+
+#### Constructor options
 
 The NER constructor has the following properties:
 
@@ -69,11 +74,28 @@ The NER constructor has the following properties:
 * ``verbose:bool`` Set to True to get processing info. Leave it at its default False value for peace and quiet.
 * ``bio2tag_list:list`` Default None, change only if you trained your own model with different ordering of the BIO2 tags.
 
+#### Implicit tokenization of texts
+
 Please note that RoNER uses Stanza to handle Romanian tokenization into words and part-of-speech tagging. On first run, it will download not only the NER transformer model, but also Stanza's Romanian data package.
+
+#### 'PERSON' class handling
 
 An important aspect that requires clarification is the handling of the ``PERSON`` label. In RONECv2, persons are not only names of persons (proper nouns, aka ``George Mihailescu``), but also any common noun that refers to a person, such as ``ea``, ``fratele`` or ``doctorul``. For applications that do not need to handle this scenario, please set the ``named_persons_only`` value to ``True`` in RoNER's constructor. 
 
 What this does is use the part of speech tagging provided by Stanza and only set as ``PERSON``s proper nouns.
+
+#### Multi-word entities
+
+Sometimes, entities span multiple words. To handle this, RoNER has a special property named ``multi_word_entity``, which, when True, means that the current entity is linked to the previous one. Single-word entities will have this property set to False, as will the _first_ word of multi-word entities. This is necessary to distinguish between sequential multi-word entities. 
+
+#### Detokenization
+
+One particular use-case for a NER is to perform text anonymization, which means to replace entities with their label. With this in mind, RoNER has a ``detokenization`` function, that, applied to the outputs, will recreate the original strings. 
+
+To perform the anonymization, iterate through all the words, and replace the word's text with its label as in ``word['text'] = word['tag']``.
+Then, simply run ``anonymized_texts = ner.detokenize(outputs)``. This will preserve spaces, new-lines and other characters.
+
+#### NER accuracy metrics
 
 Finally, because we trained the model on a modified version of RONECv2 (we performed data augumentation on the sentences, used a different training scheme and other train/validation/test splits) we are unable to compare to the standard baseline of RONECv2 as part of the original test set is now included in our training data, but we have obtained, to our knowledge, SOTA results on Romanian. This repo is meant to be used in production, and not for comparisons to other models.
 
