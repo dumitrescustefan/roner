@@ -75,6 +75,8 @@ An important aspect that requires clarification is the handling of the ``PERSON`
 
 What this does is use the part of speech tagging provided by Stanza and only set as ``PERSON``s proper nouns.
 
+Finally, because we trained the model on a modified version of RONECv2 (we performed data augumentation on the sentences, used a different training scheme and other train/validation/test splits) we are unable to compare to the standard baseline of RONECv2 as part of the original test set is now included in our training data, but we have obtained, to our knowledge, SOTA results on Romanian. This repo is meant to be used in production, and not for comparisons to other models.
+
 ## BibTeX entry and citation info
 
 Please consider citing the following [paper](https://arxiv.org/abs/1909.01247) as a thank you to the authors of the RONEC, even if it describes v1 of the corpus and you are using a model trained on v2 by the same authors: 
