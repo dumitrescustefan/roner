@@ -40,15 +40,15 @@ RoNER outputs a list of dictionary objects corresponding to the given input list
 {
   "text": <<original text given as input>>,
   "input_ids": <<token ids of the original text>>,
-  "words": {
-    "text": <<each word>>,
-    "tag": <<entity label>>
-    "pos": <<part of speech of this word>>,
-    "start_char": <<start position of this word in the original text>>,
-    "end_char": <<end position of this word in the original text>>,
-    "token_ids": <<list of subtoken ids as given by the BERT tokenizer>>,
-    "tag_ids": <<list of BIO2 tags assigned by the model for each subtoken>>
-  }
+  "words": [{
+      "text": <<each word>>,
+      "tag": <<entity label>>
+      "pos": <<part of speech of this word>>,
+      "start_char": <<start position of this word in the original text>>,
+      "end_char": <<end position of this word in the original text>>,
+      "token_ids": <<list of subtoken ids as given by the BERT tokenizer>>,
+      "tag_ids": <<list of BIO2 tags assigned by the model for each subtoken>>
+    }]
 }
 ```
 
