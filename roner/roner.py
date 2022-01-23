@@ -54,7 +54,7 @@ class NER():
         try:
             self.stanza = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
         except:
-            self.stanza.download('ro')
+            stanza.download('ro')
             self.stanza = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
 
     def __call__(self, texts:[]):
