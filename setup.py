@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="roner",
-    version="1.0",
+    version="1.0.0",
     author="Stefan Daniel Dumitrescu",
     author_email="dumitrescu.stefan@gmail.com",
     description="Named Entity Recognition for Romanian",
@@ -21,7 +21,7 @@ setuptools.setup(
     classifiers=(
         'Development Status :: 4 - Beta',
         "Programming Language :: Python :: 3.0",
-        "License :: OSI Approved :: MIT Software License",
+        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
         'Intended Audience :: Developers',
         'Intended Audience :: Education',
