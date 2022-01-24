@@ -294,4 +294,3 @@ class NER():
                 "start": batch_start,
                 "end": batch_end
             }
-)
