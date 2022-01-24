@@ -1,4 +1,5 @@
-
+![version](https://img.shields.io/badge/version-1.0.2-green)
+![bert](https://img.shields.io/badge/model-bert--base--romanian--ner-orange)
 # RoNER
 
 RoNER is a Named Entity Recognition model based on a pre-trained [BERT transformer model](https://huggingface.co/dumitrescustefan/bert-base-romanian-ner) trained on [RONECv2](https://github.com/dumitrescustefan/ronec). It is meant to be an easy to use, high-accuracy Python package providing Romanian NER.
