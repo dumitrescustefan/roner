@@ -294,3 +294,44 @@ class NER():
                 "start": batch_start,
                 "end": batch_end
             }
+
+
+
+if __name__ == "__main__":
+    """    texts = [
+            "Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. ",
+            "Miercuri, 13 Decembrie, în România.",
+            "George merge cu trenul Cluj - Timișoara de ora 6:20.", 
+            "Grecia are capitala la Atena.",
+            "România Spania și Italia!\n\n"
+        ]
+        
+        ner = NER(named_persons_only=True)
+        outputs = ner(texts)
+        for output in outputs:
+            print(f"Original text: {output['text']}")
+            for word in output['words']:
+                print(f"{word['text']:>20} = {word['tag']:<9}  {word}")
+    
+        detokenized_texts = ner.detokenize(outputs)
+        for text in detokenized_texts:
+            print(f"[{text}]")
+    """
+
+    import pandas as pd
+    df = pd.read_csv('agreed_dataset_anonimized_with_percents3.csv', encoding = 'utf-8')
+    texts = []
+    for elem in df["text"]:
+        texts.append(elem)
+
+    ner = NER(named_persons_only=True, verbose=True)
+    outputs = ner(["","\n","    ","\t","test!"])
+
+    for output in outputs:
+        print(f"Original text: >>{output['text']}<<")
+        for word in output['words']:
+            print(f"{word['text']:>20} = {word['tag']:<9}  {word}")
+
+    detokenized_texts = ner.detokenize(outputs)
+    for text in detokenized_texts:
+        print(f"[{text}]")
