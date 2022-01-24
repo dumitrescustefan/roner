@@ -3,6 +3,7 @@
 import torch
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer, AutoModelForTokenClassification
+from tqdm.autonotebook import tqdm as tqdm
 import stanza
 
 class NER():
@@ -44,6 +45,7 @@ class NER():
         self.window_size = window_size
         self.overlap_last = window_size//4
         self.num_workers = num_workers
+        self.verbose = verbose
 
         # load model
         self.tokenizer = AutoTokenizer.from_pretrained(model, strip_tokens=False, lower_case=False)
@@ -72,20 +74,20 @@ class NER():
                 raise Exception(f"Input type not supported {type(texts)}. Please input a string or a list of strings.")
 
         # setup dataloader
-        dataset = NER.InferenceDataset(texts=texts, tokenizer=self.tokenizer, stanza=self.stanza_nlp, model_size=self.window_size, overlap_last=self.overlap_last, named_persons_only=self.named_persons_only)
+        dataset = NER.InferenceDataset(texts=texts, tokenizer=self.tokenizer, stanza=self.stanza_nlp, model_size=self.window_size, overlap_last=self.overlap_last, named_persons_only=self.named_persons_only, verbose=self.verbose)
         dataloader = torch.utils.data.DataLoader(dataset, num_workers=self.num_workers, batch_size=self.batch_size, collate_fn=NER.InferenceCollator(model_size=self.window_size, tokenizer=self.tokenizer, device=self.device))
 
         # run prediction
-        for batch in dataloader:
-            with torch.no_grad():
-                output = self.model(
-                    input_ids=batch["input_ids"],
-                    attention_mask=batch["attention_mask"],
-                    return_dict=True
-                )
-                logits = output["logits"] # [batch_size, model_size, bio2label_size]
-            indices = torch.argmax(logits.cpu(), dim=-1).squeeze(dim=0).tolist()  # reduce to [batch_size, model_size] as list
-            dataset.predictions.extend(indices)
+        with torch.no_grad():
+                for batch in tqdm(dataloader, desc="Running NER", unit="texts", disable=not self.verbose):
+                    output = self.model(
+                        input_ids=batch["input_ids"],
+                        attention_mask=batch["attention_mask"],
+                        return_dict=True
+                    )
+                    logits = output["logits"] # [batch_size, model_size, bio2label_size]
+                    indices = torch.argmax(logits.cpu(), dim=-1).squeeze(dim=-1).tolist()  # reduce to [batch_size, model_size] as list
+                    dataset.predictions.extend(indices)
 
         # agreement between overlapping windows
         dataset.run_agreement()
@@ -99,27 +101,25 @@ class NER():
         :return: list of strings representing the detokenized text
         """
         texts = []
-
         for output in outputs:
-            text = ""
+            text = output["span_before"]
             for word in output["words"]:
                 text += word['text'] + word['span_after']
             texts.append(text)
-
         return texts
 
-
     class InferenceDataset(Dataset):
-        def __init__(self, texts: [], tokenizer: str, stanza, model_size:int, overlap_last:int, named_persons_only:bool):
+        def __init__(self, texts: [], tokenizer: str, stanza, model_size:int, overlap_last:int, named_persons_only:bool, verbose:bool):
             self.model_size = model_size
             self.overlap_last = overlap_last
             self.named_persons_only = named_persons_only
+            self.verbose = verbose
             self.processed_texts = [] # list of tokenized texts
             self.instances = []
             self.predictions = []
             self.tokenizer = tokenizer
 
-            for text_id, text in enumerate(texts):
+            for text_id, text in enumerate(tqdm(texts, desc="Preprocessing texts", unit="texts", disable=not self.verbose)):
                 units, input_ids = [], []
 
                 # tokenize/pos text
@@ -152,10 +152,16 @@ class NER():
                         )
                         input_ids.extend(units[-1]["token_ids"])
 
+                # get span_before for possible detokenization
+                span_before = text
+                if len(units)>0:
+                    span_before = text[0:units[0]["start_char"]] # text that's not a word, preceding the first word
+
                 # save processed element
                 self.processed_texts.append({
                     "text": text,
                     "input_ids": input_ids,
+                    "span_before": span_before,
                     "words": units
                 })
 
@@ -170,6 +176,7 @@ class NER():
                         "input_ids": input_ids[start:end],
                     })
                     #print(f"text_id {text_id}: {start}-{end}")
+            #print("Done instances")
 
         def run_agreement(self):
             assert len(self.instances)==len(self.predictions)
@@ -222,8 +229,14 @@ class NER():
                 j = 0
                 for i in range(len(self.processed_texts[current_text_idx]["words"])):
                     cnt = len(self.processed_texts[current_text_idx]["words"][i]["token_ids"])
-                    self.processed_texts[current_text_idx]["words"][i]["tag_ids"] = tags[j:j+cnt] #save tags
-                    tag = NER.bio2tag_list[tags[j]]
+
+                    if cnt == 0: # bug when transformer tokenizer gives no token ids for this word, and j==len(sequence token_ids)
+                        tag = 'O'
+                        self.processed_texts[current_text_idx]["words"][i]["tag_ids"] = [0] # fake tag added
+                    else:
+                        tag = NER.bio2tag_list[tags[j]]
+                        self.processed_texts[current_text_idx]["words"][i]["tag_ids"] = tags[j:j + cnt]  # save tags
+
                     if tag != "O":
                         tag = tag[2:]
                         if tag == "PERSON" and self.named_persons_only is True and self.processed_texts[current_text_idx]["words"][i]['pos'] != "PROPN":
@@ -281,26 +294,3 @@ class NER():
                 "start": batch_start,
                 "end": batch_end
             }
-
-
-"""
-if __name__ == "__main__":
-    texts = [
-        "Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. Mimi galopează în București. Dr. Ion Iliescu merge la ora 7:00, duminica, 3 August 2022. Fratele cel mare veghează. ",
-        "Miercuri, 13 Decembrie, în România.",
-        "George merge cu trenul Cluj - Timișoara de ora 6:20.", 
-        "Grecia are capitala la Atena.",
-        "România Spania și Italia!\n\n"
-    ]
-    
-    ner = NER(named_persons_only=True)
-    outputs = ner(texts)
-    for output in outputs:
-        print(f"Original text: {output['text']}")
-        for word in output['words']:
-            print(f"{word['text']:>20} = {word['tag']:<9}  {word}")
-
-    detokenized_texts = ner.detokenize(outputs)
-    for text in detokenized_texts:
-        print(f"[{text}]")
-"""

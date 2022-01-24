@@ -1,4 +1,3 @@
-## !!! This is a work-in-progress, will be updated soon !!!
 
 # RoNER
 
