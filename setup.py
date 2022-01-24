@@ -9,7 +9,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="roner",
-    version="1.0.0",
+    version="1.0.1",
     author="Stefan Daniel Dumitrescu",
     author_email="dumitrescu.stefan@gmail.com",
     description="Named Entity Recognition for Romanian",
