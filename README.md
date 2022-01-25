@@ -1,4 +1,4 @@
-![version](https://img.shields.io/badge/version-1.0.2-green)
+![version](https://img.shields.io/badge/version-1.0.3-green)
 ![bert](https://img.shields.io/badge/model-bert--base--romanian--ner-orange)
 # RoNER
 
