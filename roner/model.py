@@ -1,10 +1,9 @@
 # -*- coding: utf8 -*-
 
-import torch
+import torch, stanza, re
 from torch.utils.data import Dataset
 from transformers import AutoTokenizer, AutoModelForTokenClassification
 from tqdm.autonotebook import tqdm as tqdm
-import stanza
 
 class NER():
     bio2tag_list = ['O', 'B-PERSON', 'I-PERSON', 'B-ORG', 'I-ORG', 'B-GPE', 'I-GPE', 'B-LOC', 'I-LOC', 'B-NAT_REL_POL',
@@ -54,10 +53,10 @@ class NER():
         self.model.eval()
 
         try:
-            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
+            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN', tokenize_no_ssplit=True)
         except:
             stanza.download('ro')
-            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN')
+            self.stanza_nlp = stanza.Pipeline('ro', processors='tokenize,pos', use_gpu=use_gpu, logging_level='WARN', tokenize_no_ssplit=True)
 
     def __call__(self, texts:[]):
         """
@@ -109,7 +108,7 @@ class NER():
         return texts
 
     class InferenceDataset(Dataset):
-        def __init__(self, texts: [], tokenizer: str, stanza, model_size:int, overlap_last:int, named_persons_only:bool, verbose:bool):
+        def __init__(self, texts: [], tokenizer: str, stanza, model_size: int, overlap_last: int, named_persons_only: bool, verbose: bool):
             self.model_size = model_size
             self.overlap_last = overlap_last
             self.named_persons_only = named_persons_only
@@ -121,6 +120,8 @@ class NER():
 
             for text_id, text in enumerate(tqdm(texts, desc="Preprocessing texts", unit="texts", disable=not self.verbose)):
                 units, input_ids = [], []
+                # due to stanza's \n\n being treated as a new sentence, we need to contract all multiple \n's to one
+                text = re.sub(r'\n+', '\n', text)
 
                 # tokenize/pos text
                 doc = stanza(text)
