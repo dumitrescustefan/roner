@@ -6,7 +6,7 @@ RoNER is a Named Entity Recognition model based on a pre-trained [BERT transform
 
 RoNER handles _text splitting_, _word-to-subword alignment_, and it works with arbitrarily _long text sequences_ on CPU or GPU.  
 
-
+Check out an [online demo at Huggingface Spaces](https://huggingface.co/spaces/dumitrescustefan/NamedEntityRecognition-Romanian)
 
 ## Instalation & usage
 
